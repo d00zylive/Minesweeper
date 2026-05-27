@@ -21,16 +21,6 @@ class Cell():
 
     def __repr__(self):
         return f"Cell(x={self.x},y={self.y},value={self.value},flagged={self.flagged}, mined={self.mined})"
-    
-    def __str__(self):
-        if self.mined:
-            if self.value == -1:
-                return "@"
-            return str(self.value)
-        elif self.flagged:
-            return "F"
-        else:
-            return "#"
         
     def intialiseValue(self) -> None:
         if self.value != -1:
@@ -63,10 +53,18 @@ def initialiseGrid(width:int, height:int, mines:int) -> list[list[Cell]]:
 
     return grid
 
-def printGrid(grid:list[list[Cell]]) -> None:
+def printGrid(grid:list[list[Cell]], ignoreMined: bool = False) -> None:
     for column in grid:
         for cell in column:
-            print(str(cell), end="")
+            if cell.mined or ignoreMined:
+                if cell.value == -1:
+                    print("@",end="")
+                else:
+                    print(cell.value,end="")
+            elif cell.flagged:
+                print("F",end="")
+            else:
+                print("#",end="")
         print()
 
 grid = initialiseGrid(width=10, height=10, mines=10)
