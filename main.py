@@ -32,7 +32,6 @@ class Cell():
             adjacentCells.append(self.grid[x][y])
         return adjacentCells
             
-
     def intialiseCount(self) -> None:
         if self.count != -1:
             self.count = 0
@@ -69,6 +68,13 @@ def initialiseGrid(width:int, height:int, mines:int) -> list[list[Cell]]:
 
     return grid
 
+def hasWon(grid) -> bool:
+    for column in grid:
+        for cell in column:
+            if not cell.mined and not cell.count == -1:
+                return False
+    return True
+
 def printGrid(grid:list[list[Cell]], ignoreMined: bool = False) -> None:
     for column in grid:
         for cell in column:
@@ -88,6 +94,8 @@ grid = initialiseGrid(width=10, height=10, mines=10)
 printGrid(grid, True)
 printGrid(grid)
 while True:
-    random.choice(random.choice(grid)).mine()
+    if random.choice(random.choice(grid)).mine(): # grid[int(input("y:   "))][int(input("x:   "))].mine():
+        print("BOOM!")
+    if hasWon(grid):
+        print("WON!")
     printGrid(grid)
-    input()
