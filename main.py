@@ -39,15 +39,27 @@ class Cell():
                 if cell.count == -1:
                     self.count += 1
     
-    def mine(self) -> bool:
+    def mine(self, chord:bool = False) -> bool:
         if not self.mined:
             self.mined = True
             if self.count == 0:
                 for cell in self.getAdjacentCells():
                     cell.mine()
-            return self.count == -1
+            else:
+                return self.count == -1
+        elif not chord:
+            flagCount = 0
+            for cell in self.getAdjacentCells():
+                if cell.flagged:
+                    flagCount += 1
+            if flagCount == self.count:
+                if any([cell.mine(chord=True) for cell in self.getAdjacentCells()]):
+                    return True
         return False
-            
+    
+    def flag(self) -> None:
+        self.flagged = not self.flagged
+          
 
 def initialiseGrid(width:int, height:int, mines:int) -> list[list[Cell]]:
     if mines > width*height:
@@ -92,10 +104,14 @@ def printGrid(grid:list[list[Cell]], ignoreMined: bool = False) -> None:
 grid = initialiseGrid(width=10, height=10, mines=10)
 
 printGrid(grid, True)
+print()
 printGrid(grid)
+print()
 while True:
     if random.choice(random.choice(grid)).mine(): # grid[int(input("y:   "))][int(input("x:   "))].mine():
         print("BOOM!")
     if hasWon(grid):
         print("WON!")
     printGrid(grid)
+    print()
+    input()
