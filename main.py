@@ -3,7 +3,7 @@ from typing import Self
 
 ADJACENCYVECTORS = [[-1,-1],[-1,0],[-1,1],[0,-1],[0,1],[1,-1],[1,0],[1,1]]
 
-class Cell():
+class Tile():
     x: int
     y: int
     grid: list[list[Self]]
@@ -20,23 +20,23 @@ class Cell():
         self.mined = mined
 
     def __repr__(self):
-        return f"Cell(x={self.x},y={self.y},count={self.count},flagged={self.flagged}, mined={self.mined})"
+        return f"Tile(x={self.x},y={self.y},count={self.count},flagged={self.flagged}, mined={self.mined})"
 
-    def getAdjacentCells(self) -> list[Self]:
-        adjacentCells = []
+    def getAdjacentTiles(self) -> list[Self]:
+        adjacentTiles = []
         for vector in ADJACENCYVECTORS:
             x = self.x+vector[0]
             y = self.y+vector[1]
             if x < 0 or y < 0 or x >= len(self.grid) or y >= len(self.grid[0]):
                 continue
-            adjacentCells.append(self.grid[x][y])
-        return adjacentCells
+            adjacentTiles.append(self.grid[x][y])
+        return adjacentTiles
             
     def intialiseCount(self) -> None:
         if self.count != -1:
             self.count = 0
-            for cell in self.getAdjacentCells():
-                if cell.count == -1:
+            for tile in self.getAdjacentTiles():
+                if tile.count == -1:
                     self.count += 1
     
     def mine(self, chord:bool = False) -> bool:
@@ -44,17 +44,17 @@ class Cell():
             if not self.mined:
                 self.mined = True
                 if self.count == 0:
-                    for cell in self.getAdjacentCells():
-                        cell.mine()
+                    for tile in self.getAdjacentTiles():
+                        tile.mine()
                 else:
                     return self.count == -1
             elif not chord:
                 flagCount = 0
-                for cell in self.getAdjacentCells():
-                    if cell.flagged:
+                for tile in self.getAdjacentTiles():
+                    if tile.flagged:
                         flagCount += 1
                 if flagCount == self.count:
-                    if any([cell.mine(chord=True) for cell in self.getAdjacentCells()]):
+                    if any([tile.mine(chord=True) for tile in self.getAdjacentTiles()]):
                         return True
         return False
     
@@ -62,41 +62,41 @@ class Cell():
         self.flagged = not self.flagged
           
 
-def initialiseGrid(width:int, height:int, mines:int) -> list[list[Cell]]:
+def initialiseGrid(width:int, height:int, mines:int) -> list[list[Tile]]:
     if mines > width*height:
-        raise ValueError("More mines than cells")
+        raise ValueError("More mines than tiles")
 
-    grid: list[list[Cell]] = []
+    grid: list[list[Tile]] = []
     for x in range(width):
-        grid.append([Cell(x=x, y=y, grid=grid) for y in range(height)])
+        grid.append([Tile(x=x, y=y, grid=grid) for y in range(height)])
 
     for _ in range(mines):
-            cell = grid[random.randint(0,width-1)][random.randint(0,height-1)]
-            if cell.count == None:
-                cell.count = -1
+            tile = grid[random.randint(0,width-1)][random.randint(0,height-1)]
+            if tile.count == None:
+                tile.count = -1
 
     for column in grid:
-        for cell in column:
-            cell.intialiseCount()
+        for tile in column:
+            tile.intialiseCount()
 
     return grid
 
 def hasWon(grid) -> bool:
     for column in grid:
-        for cell in column:
-            if not cell.mined and not cell.count == -1:
+        for tile in column:
+            if not tile.mined and not tile.count == -1:
                 return False
     return True
 
-def printGrid(grid:list[list[Cell]], ignoreMined: bool = False) -> None:
+def printGrid(grid:list[list[Tile]], ignoreMined: bool = False) -> None:
     for column in grid:
-        for cell in column:
-            if cell.mined or ignoreMined:
-                if cell.count == -1:
+        for tile in column:
+            if tile.mined or ignoreMined:
+                if tile.count == -1:
                     print("@",end="")
                 else:
-                    print(cell.count,end="")
-            elif cell.flagged:
+                    print(tile.count,end="")
+            elif tile.flagged:
                 print("F",end="")
             else:
                 print("#",end="")
