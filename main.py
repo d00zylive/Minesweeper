@@ -1,13 +1,35 @@
 import random
 from typing import Self
+import pygame
+import os
 
 ADJACENCYVECTORS = [[-1,-1],[-1,0],[-1,1],[0,-1],[0,1],[1,-1],[1,0],[1,1]]
+SPRITEDIR = os.path.join(os.path.dirname(__file__), "sprites")
+SQUARESIZE = 32
+BOARDWIDTH = 10
+BOARDHEIGHT = 10
+
+SPRITES = {
+    0: pygame.image.load(os.path.join(SPRITEDIR,"0.png")),
+    1: pygame.image.load(os.path.join(SPRITEDIR,"1.png")),
+    2: pygame.image.load(os.path.join(SPRITEDIR,"2.png")),
+    3: pygame.image.load(os.path.join(SPRITEDIR,"3.png")),
+    4: pygame.image.load(os.path.join(SPRITEDIR,"4.png")),
+    5: pygame.image.load(os.path.join(SPRITEDIR,"5.png")),
+    6: pygame.image.load(os.path.join(SPRITEDIR,"6.png")),
+    7: pygame.image.load(os.path.join(SPRITEDIR,"7.png")),
+    8: pygame.image.load(os.path.join(SPRITEDIR,"8.png")),
+    "flag": pygame.image.load(os.path.join(SPRITEDIR,"flag.png")),
+    "mine": pygame.image.load(os.path.join(SPRITEDIR,"mine.png")),
+    "unmined": pygame.image.load(os.path.join(SPRITEDIR,"unmined.png")),
+    "wrong": pygame.image.load(os.path.join(SPRITEDIR,"wrong.png"))
+}
 
 class Tile():
     x: int
     y: int
     grid: list[list[Self]]
-    count: int|None #0-8 or -1 for mine
+    count: int|None #0-8 or -1 for mine. None means uninitialised
     flagged: bool
     mined: bool
 
@@ -61,6 +83,22 @@ class Tile():
     def flag(self) -> None:
         if not self.mined:
             self.flagged = not self.flagged
+            
+    def draw(self, surface: pygame.Surface, displayMines:bool = False) -> None:
+        if self.flagged:
+            sprite = SPRITES["flag"]
+        elif not self.mined and (self.count != -1 or not displayMines):
+            sprite = SPRITES["unmined"]
+        elif self.count == -1:
+            if self.mined:
+                sprite = SPRITES["wrong"]
+            else:
+                sprite = SPRITES["mine"]
+        elif self.count != None:
+            sprite = SPRITES[self.count]
+        
+        surface.blit(pygame.transform.scale(sprite, (SQUARESIZE, SQUARESIZE)), (self.x*SQUARESIZE, self.y*SQUARESIZE))
+            
           
 
 def initialiseGrid(width:int, height:int, mines:int) -> list[list[Tile]]:
@@ -103,19 +141,36 @@ def printGrid(grid:list[list[Tile]], ignoreMined: bool = False) -> None:
                 print("#",end="")
         print()
 
-grid = initialiseGrid(width=10, height=10, mines=10)
+grid = initialiseGrid(width=BOARDWIDTH, height=BOARDHEIGHT, mines=10)
 
-printGrid(grid, True)
-print()
-printGrid(grid)
-print()
-while True:
-    if random.choice(random.choice(grid)).mine(): # grid[int(input("y:   "))][int(input("x:   "))].mine():
-        print("BOOM!")
-    if hasWon(grid):
-        print("WON!")
-    printGrid(grid)
-    print()
-    input()
+pygame.init()
+screen = pygame.display.set_mode((BOARDWIDTH*SQUARESIZE,BOARDHEIGHT*SQUARESIZE))
+clock = pygame.time.Clock()
+running = True
+finished = False
+
+while running:
+    for event in pygame.event.get():
+        if event.type == pygame.QUIT:
+            running = False
+        elif event.type == pygame.MOUSEBUTTONUP:
+            mouseX,mouseY = pygame.mouse.get_pos()
+            x = mouseX//SQUARESIZE
+            y = mouseY//SQUARESIZE
+            if event.button == 1:
+                if grid[x][y].mine():
+                    finished = True
+                if hasWon(grid):
+                    finished = True
+            elif event.button == 3:
+                grid[x][y].flag()
+            
+    screen.fill("light grey")
     
-#TODO: Pygame
+    for column in grid:
+        for tile in column:
+            tile.draw(screen, displayMines=finished)
+    
+    pygame.display.flip()
+    
+    clock.tick(60)
