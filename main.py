@@ -40,21 +40,22 @@ class Cell():
                     self.count += 1
     
     def mine(self, chord:bool = False) -> bool:
-        if not self.mined:
-            self.mined = True
-            if self.count == 0:
+        if not self.flagged:
+            if not self.mined:
+                self.mined = True
+                if self.count == 0:
+                    for cell in self.getAdjacentCells():
+                        cell.mine()
+                else:
+                    return self.count == -1
+            elif not chord:
+                flagCount = 0
                 for cell in self.getAdjacentCells():
-                    cell.mine()
-            else:
-                return self.count == -1
-        elif not chord:
-            flagCount = 0
-            for cell in self.getAdjacentCells():
-                if cell.flagged:
-                    flagCount += 1
-            if flagCount == self.count:
-                if any([cell.mine(chord=True) for cell in self.getAdjacentCells()]):
-                    return True
+                    if cell.flagged:
+                        flagCount += 1
+                if flagCount == self.count:
+                    if any([cell.mine(chord=True) for cell in self.getAdjacentCells()]):
+                        return True
         return False
     
     def flag(self) -> None:
@@ -115,3 +116,5 @@ while True:
     printGrid(grid)
     print()
     input()
+    
+#TODO: Pygame
