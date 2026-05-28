@@ -59,7 +59,8 @@ class Tile():
         return False
     
     def flag(self) -> None:
-        self.flagged = not self.flagged
+        if not self.mined:
+            self.flagged = not self.flagged
           
 
 def initialiseGrid(width:int, height:int, mines:int) -> list[list[Tile]]:
