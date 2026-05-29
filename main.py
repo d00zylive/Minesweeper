@@ -5,9 +5,16 @@ import os
 
 ADJACENCYVECTORS = [[-1,-1],[-1,0],[-1,1],[0,-1],[0,1],[1,-1],[1,0],[1,1]]
 SPRITEDIR = os.path.join(os.path.dirname(__file__), "sprites")
-SQUARESIZE = 32
-BOARDWIDTH = 10
-BOARDHEIGHT = 10
+
+MAXWINDOWWIDTH, MAXWINDOWHEIGHT = 1280, 720
+MINSQUARESIZE = 8
+MAXSQUARESIZE = 64
+
+BOARDWIDTH = 50
+BOARDHEIGHT = 50
+MINES = 10
+
+SQUARESIZE = min(max(min(MAXWINDOWWIDTH//BOARDWIDTH, MAXWINDOWHEIGHT//BOARDHEIGHT), MINSQUARESIZE), MAXSQUARESIZE)
 
 SPRITES = {
     0: pygame.image.load(os.path.join(SPRITEDIR,"0.png")),
@@ -21,7 +28,7 @@ SPRITES = {
     8: pygame.image.load(os.path.join(SPRITEDIR,"8.png")),
     "flag": pygame.image.load(os.path.join(SPRITEDIR,"flag.png")),
     "mine": pygame.image.load(os.path.join(SPRITEDIR,"mine.png")),
-    "unmined": pygame.image.load(os.path.join(SPRITEDIR,"unmined.png")),
+    "undu": pygame.image.load(os.path.join(SPRITEDIR,"undug.png")),
     "wrong": pygame.image.load(os.path.join(SPRITEDIR,"wrong.png"))
 }
 
@@ -31,18 +38,18 @@ class Tile():
     grid: list[list[Self]]
     count: int|None #0-8 or -1 for mine. None means uninitialised
     flagged: bool
-    mined: bool
+    dug: bool
 
-    def __init__(self, x: int, y: int, grid: list[list[Self]], flagged:bool = False, mined:bool = False, count:int|None = None):
+    def __init__(self, x: int, y: int, grid: list[list[Self]], flagged:bool = False, dug:bool = False, count:int|None = None):
         self.x = x
         self.y = y
         self.grid = grid
         self.count = count
         self.flagged = flagged
-        self.mined = mined
+        self.dug = dug
 
     def __repr__(self):
-        return f"Tile(x={self.x},y={self.y},count={self.count},flagged={self.flagged}, mined={self.mined})"
+        return f"Tile(x={self.x},y={self.y},count={self.count},flagged={self.flagged}, dug={self.dug})"
 
     def getAdjacentTiles(self) -> list[Self]:
         adjacentTiles = []
@@ -61,13 +68,16 @@ class Tile():
                 if tile.count == -1:
                     self.count += 1
     
-    def mine(self, chord:bool = False) -> bool:
+    def dig(self, chord:bool = False) -> bool:
         if not self.flagged:
-            if not self.mined:
-                self.mined = True
+            if not self.dug:
+                self.dug = True
                 if self.count == 0:
                     for tile in self.getAdjacentTiles():
-                        tile.mine()
+                        try:
+                            tile.dig()
+                        except RecursionError:
+                            queue.append(tile)
                 else:
                     return self.count == -1
             elif not chord:
@@ -76,21 +86,21 @@ class Tile():
                     if tile.flagged:
                         flagCount += 1
                 if flagCount == self.count:
-                    if any([tile.mine(chord=True) for tile in self.getAdjacentTiles()]):
+                    if any([tile.dig(chord=True) for tile in self.getAdjacentTiles()]):
                         return True
         return False
     
     def flag(self) -> None:
-        if not self.mined:
+        if not self.dug:
             self.flagged = not self.flagged
             
     def draw(self, surface: pygame.Surface, displayMines:bool = False) -> None:
         if self.flagged:
             sprite = SPRITES["flag"]
-        elif not self.mined and (self.count != -1 or not displayMines):
-            sprite = SPRITES["unmined"]
+        elif not self.dug and (self.count != -1 or not displayMines):
+            sprite = SPRITES["undug"]
         elif self.count == -1:
-            if self.mined:
+            if self.dug:
                 sprite = SPRITES["wrong"]
             else:
                 sprite = SPRITES["mine"]
@@ -98,8 +108,10 @@ class Tile():
             sprite = SPRITES[self.count]
         
         surface.blit(pygame.transform.scale(sprite, (SQUARESIZE, SQUARESIZE)), (self.x*SQUARESIZE, self.y*SQUARESIZE))
-            
-          
+
+global queue
+queue: list[Tile] = []       
+
 
 def initialiseGrid(width:int, height:int, mines:int) -> list[list[Tile]]:
     if mines > width*height:
@@ -123,14 +135,14 @@ def initialiseGrid(width:int, height:int, mines:int) -> list[list[Tile]]:
 def hasWon(grid) -> bool:
     for column in grid:
         for tile in column:
-            if not tile.mined and not tile.count == -1:
+            if not tile.dug and not tile.count == -1:
                 return False
     return True
 
-def printGrid(grid:list[list[Tile]], ignoreMined: bool = False) -> None:
+def printGrid(grid:list[list[Tile]], ignoreDug: bool = False) -> None:
     for column in grid:
         for tile in column:
-            if tile.mined or ignoreMined:
+            if tile.dug or ignoreDug:
                 if tile.count == -1:
                     print("@",end="")
                 else:
@@ -141,7 +153,7 @@ def printGrid(grid:list[list[Tile]], ignoreMined: bool = False) -> None:
                 print("#",end="")
         print()
 
-grid = initialiseGrid(width=BOARDWIDTH, height=BOARDHEIGHT, mines=10)
+grid = initialiseGrid(width=BOARDWIDTH, height=BOARDHEIGHT, mines=MINES)
 
 pygame.init()
 screen = pygame.display.set_mode((BOARDWIDTH*SQUARESIZE,BOARDHEIGHT*SQUARESIZE))
@@ -158,7 +170,7 @@ while running:
             x = mouseX//SQUARESIZE
             y = mouseY//SQUARESIZE
             if event.button == 1:
-                if grid[x][y].mine():
+                if grid[x][y].dig():
                     finished = True
                 if hasWon(grid):
                     finished = True
@@ -166,6 +178,9 @@ while running:
                 grid[x][y].flag()
             
     screen.fill("light grey")
+    
+    while len(queue) > 0:
+        queue.pop(0).dig()
     
     for column in grid:
         for tile in column:
