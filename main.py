@@ -10,9 +10,9 @@ MAXWINDOWWIDTH, MAXWINDOWHEIGHT = 1280, 720
 MINSQUARESIZE = 8
 MAXSQUARESIZE = 64
 
-BOARDWIDTH = 50
-BOARDHEIGHT = 50
-MINES = 10
+BOARDWIDTH = 30
+BOARDHEIGHT = 16
+MINES = 99
 
 SQUARESIZE = min(max(min(MAXWINDOWWIDTH//BOARDWIDTH, MAXWINDOWHEIGHT//BOARDHEIGHT), MINSQUARESIZE), MAXSQUARESIZE)
 
@@ -28,8 +28,9 @@ SPRITES = {
     8: pygame.image.load(os.path.join(SPRITEDIR,"8.png")),
     "flag": pygame.image.load(os.path.join(SPRITEDIR,"flag.png")),
     "mine": pygame.image.load(os.path.join(SPRITEDIR,"mine.png")),
-    "undu": pygame.image.load(os.path.join(SPRITEDIR,"undug.png")),
-    "wrong": pygame.image.load(os.path.join(SPRITEDIR,"wrong.png"))
+    "undug": pygame.image.load(os.path.join(SPRITEDIR,"undug.png")),
+    "wrongdig": pygame.image.load(os.path.join(SPRITEDIR,"wrongdig.png")),
+    "wrongflag": pygame.image.load(os.path.join(SPRITEDIR,"wrongflag.png"))
 }
 
 class Tile():
@@ -96,12 +97,15 @@ class Tile():
             
     def draw(self, surface: pygame.Surface, displayMines:bool = False) -> None:
         if self.flagged:
-            sprite = SPRITES["flag"]
+            if displayMines and self.count != -1:
+                sprite = SPRITES["wrongflag"]
+            else:
+                sprite = SPRITES["flag"]
         elif not self.dug and (self.count != -1 or not displayMines):
             sprite = SPRITES["undug"]
         elif self.count == -1:
             if self.dug:
-                sprite = SPRITES["wrong"]
+                sprite = SPRITES["wrongdig"]
             else:
                 sprite = SPRITES["mine"]
         elif self.count != None:
@@ -109,7 +113,6 @@ class Tile():
         
         surface.blit(pygame.transform.scale(sprite, (SQUARESIZE, SQUARESIZE)), (self.x*SQUARESIZE, self.y*SQUARESIZE))
 
-global queue
 queue: list[Tile] = []       
 
 
@@ -139,20 +142,6 @@ def hasWon(grid) -> bool:
                 return False
     return True
 
-def printGrid(grid:list[list[Tile]], ignoreDug: bool = False) -> None:
-    for column in grid:
-        for tile in column:
-            if tile.dug or ignoreDug:
-                if tile.count == -1:
-                    print("@",end="")
-                else:
-                    print(tile.count,end="")
-            elif tile.flagged:
-                print("F",end="")
-            else:
-                print("#",end="")
-        print()
-
 grid = initialiseGrid(width=BOARDWIDTH, height=BOARDHEIGHT, mines=MINES)
 
 pygame.init()
@@ -176,6 +165,10 @@ while running:
                     finished = True
             elif event.button == 3:
                 grid[x][y].flag()
+        elif event.type == pygame.KEYDOWN:
+            if event.key == pygame.K_SPACE:
+                finished = False
+                grid = initialiseGrid(width=BOARDWIDTH, height=BOARDHEIGHT, mines=MINES)
             
     screen.fill("light grey")
     
