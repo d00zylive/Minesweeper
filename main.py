@@ -3,6 +3,8 @@ from typing import Self
 import pygame
 import os
 
+import time
+
 ADJACENCYVECTORS = [[-1,-1],[-1,0],[-1,1],[0,-1],[0,1],[1,-1],[1,0],[1,1]]
 SPRITEDIR = os.path.join(os.path.dirname(__file__), "sprites")
 
@@ -30,7 +32,8 @@ SPRITES = {
     "mine": pygame.image.load(os.path.join(SPRITEDIR,"mine.png")),
     "undug": pygame.image.load(os.path.join(SPRITEDIR,"undug.png")),
     "wrongdig": pygame.image.load(os.path.join(SPRITEDIR,"wrongdig.png")),
-    "wrongflag": pygame.image.load(os.path.join(SPRITEDIR,"wrongflag.png"))
+    "wrongflag": pygame.image.load(os.path.join(SPRITEDIR,"wrongflag.png")),
+    "missing": pygame.image.load(os.path.join(SPRITEDIR,"missing.png")),
 }
 
 class Tile():
@@ -69,25 +72,32 @@ class Tile():
                 if tile.count == -1:
                     self.count += 1
     
-    def dig(self, chord:bool = False) -> bool:
+    def dig(self, queue:list[Self]|None = None, depth:int = 0) -> bool:
+        if queue is None: queue = []
+
         if not self.flagged:
             if not self.dug:
                 self.dug = True
                 if self.count == 0:
                     for tile in self.getAdjacentTiles():
                         try:
-                            tile.dig()
+                            if not tile.dug: tile.dig(queue=queue, depth=depth+1)
                         except RecursionError:
-                            queue.append(tile)
+                            for adjacent in tile.getAdjacentTiles():
+                                if not adjacent.dug: queue.append(adjacent)
+                    while len(queue) > 0 and depth == 0:
+                        tile = queue.pop(0)
+                        if not tile.dug:
+                            tile.dig(queue=queue, depth=depth+1)
                 else:
                     return self.count == -1
-            elif not chord:
+            elif depth == 0:
                 flagCount = 0
                 for tile in self.getAdjacentTiles():
                     if tile.flagged:
                         flagCount += 1
                 if flagCount == self.count:
-                    if any([tile.dig(chord=True) for tile in self.getAdjacentTiles()]):
+                    if any([tile.dig(queue=queue, depth=depth+1) for tile in self.getAdjacentTiles()]):
                         return True
         return False
     
@@ -95,7 +105,7 @@ class Tile():
         if not self.dug:
             self.flagged = not self.flagged
             
-    def draw(self, surface: pygame.Surface, displayMines:bool = False) -> None:
+    def draw(self, surface: pygame.Surface, displayMines:bool = False, mark: bool = False) -> None:
         if self.flagged:
             if displayMines and self.count != -1:
                 sprite = SPRITES["wrongflag"]
@@ -110,10 +120,12 @@ class Tile():
                 sprite = SPRITES["mine"]
         elif self.count != None:
             sprite = SPRITES[self.count]
+        else:
+            sprite = SPRITES["missing"]
+
+        if mark: sprite = SPRITES["missing"]
         
         surface.blit(pygame.transform.scale(sprite, (SQUARESIZE, SQUARESIZE)), (self.x*SQUARESIZE, self.y*SQUARESIZE))
-
-queue: list[Tile] = []       
 
 
 def initialiseGrid(width:int, height:int, mines:int) -> list[list[Tile]]:
@@ -142,43 +154,45 @@ def hasWon(grid) -> bool:
                 return False
     return True
 
-grid = initialiseGrid(width=BOARDWIDTH, height=BOARDHEIGHT, mines=MINES)
+def init() -> tuple[list[list[Tile]],pygame.Surface,pygame.time.Clock]:
+    pygame.init()
+    grid = initialiseGrid(width=BOARDWIDTH, height=BOARDHEIGHT, mines=MINES)
+    screen = pygame.display.set_mode((BOARDWIDTH*SQUARESIZE,BOARDHEIGHT*SQUARESIZE))
+    clock = pygame.time.Clock()
+    return grid, screen, clock
 
-pygame.init()
-screen = pygame.display.set_mode((BOARDWIDTH*SQUARESIZE,BOARDHEIGHT*SQUARESIZE))
-clock = pygame.time.Clock()
-running = True
-finished = False
+if __name__ == "__main__":
+    grid, screen, clock = init()
 
-while running:
-    for event in pygame.event.get():
-        if event.type == pygame.QUIT:
-            running = False
-        elif event.type == pygame.MOUSEBUTTONUP:
-            mouseX,mouseY = pygame.mouse.get_pos()
-            x = mouseX//SQUARESIZE
-            y = mouseY//SQUARESIZE
-            if event.button == 1:
-                if grid[x][y].dig():
-                    finished = True
-                if hasWon(grid):
-                    finished = True
-            elif event.button == 3:
-                grid[x][y].flag()
-        elif event.type == pygame.KEYDOWN:
-            if event.key == pygame.K_SPACE:
-                finished = False
-                grid = initialiseGrid(width=BOARDWIDTH, height=BOARDHEIGHT, mines=MINES)
-            
-    screen.fill("light grey")
-    
-    while len(queue) > 0:
-        queue.pop(0).dig()
-    
-    for column in grid:
-        for tile in column:
-            tile.draw(screen, displayMines=finished)
-    
-    pygame.display.flip()
-    
-    clock.tick(60)
+    running = True
+    finished = False
+
+    while running:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                running = False
+            elif event.type == pygame.MOUSEBUTTONUP:
+                mouseX,mouseY = pygame.mouse.get_pos()
+                x = mouseX//SQUARESIZE
+                y = mouseY//SQUARESIZE
+                if event.button == 1:
+                    if grid[x][y].dig():
+                        finished = True
+                    if hasWon(grid):
+                        finished = True
+                elif event.button == 3:
+                    grid[x][y].flag()
+            elif event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_SPACE:
+                    finished = False
+                    grid = initialiseGrid(width=BOARDWIDTH, height=BOARDHEIGHT, mines=MINES)
+                
+        screen.fill("light grey")
+        
+        for column in grid:
+            for tile in column:
+                tile.draw(screen, displayMines=finished)
+        
+        pygame.display.flip()
+        
+        clock.tick(60)
