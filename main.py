@@ -34,7 +34,8 @@ SPRITES = {
     "wrongdig": pygame.image.load(os.path.join(SPRITEDIR,"wrongdig.png")),
     "wrongflag": pygame.image.load(os.path.join(SPRITEDIR,"wrongflag.png")),
     "missing": pygame.image.load(os.path.join(SPRITEDIR,"missing.png")),
-}
+    "mark": pygame.image.load(os.path.join(SPRITEDIR,"mark.png")),
+    }
 
 class Tile():
     x: int
@@ -106,7 +107,9 @@ class Tile():
             self.flagged = not self.flagged
             
     def draw(self, surface: pygame.Surface, displayMines:bool = False, mark: bool = False) -> None:
-        if self.flagged:
+        if mark:
+            sprite = SPRITES["mark"]
+        elif self.flagged:
             if displayMines and self.count != -1:
                 sprite = SPRITES["wrongflag"]
             else:
@@ -122,8 +125,6 @@ class Tile():
             sprite = SPRITES[self.count]
         else:
             sprite = SPRITES["missing"]
-
-        if mark: sprite = SPRITES["missing"]
         
         surface.blit(pygame.transform.scale(sprite, (SQUARESIZE, SQUARESIZE)), (self.x*SQUARESIZE, self.y*SQUARESIZE))
 
