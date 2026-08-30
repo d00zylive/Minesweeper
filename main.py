@@ -137,9 +137,7 @@ class Tile():
             mark (bool, optional): Whether this tile should be marked with an identifiable texture for debugging. Defaults to False.
         """
 
-        if mark:
-            sprite = SPRITES["mark"]
-        elif self.flagged:
+        if self.flagged:
             if displayMines and self.count != -1:
                 sprite = SPRITES["wrongflag"]
             else:
@@ -157,6 +155,7 @@ class Tile():
             sprite = SPRITES["missing"]
         
         surface.blit(pygame.transform.scale(sprite, (squareSize, squareSize)), (self.x*squareSize, self.y*squareSize))
+        if mark: surface.blit(pygame.transform.scale(SPRITES["mark"], (squareSize, squareSize)), (self.x*squareSize, self.y*squareSize))
 
 
 def initialiseGrid(width: int, height: int, mines: int, maxWindowWidth:int = 1280, maxWindowHeight:int = 720, minSquareSize:int = 8, maxSquareSize:int = 64) -> tuple[list[list[Tile]],int]:
