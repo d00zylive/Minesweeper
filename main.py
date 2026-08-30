@@ -3,20 +3,8 @@ from typing import Self
 import pygame
 import os
 
-import time
-
 ADJACENCYVECTORS = [[-1,-1],[-1,0],[-1,1],[0,-1],[0,1],[1,-1],[1,0],[1,1]]
 SPRITEDIR = os.path.join(os.path.dirname(__file__), "sprites")
-
-MAXWINDOWWIDTH, MAXWINDOWHEIGHT = 1280, 720
-MINSQUARESIZE = 8
-MAXSQUARESIZE = 64
-
-BOARDWIDTH = 30
-BOARDHEIGHT = 16
-MINES = 99
-
-SQUARESIZE = min(max(min(MAXWINDOWWIDTH//BOARDWIDTH, MAXWINDOWHEIGHT//BOARDHEIGHT), MINSQUARESIZE), MAXSQUARESIZE)
 
 SPRITES = {
     0: pygame.image.load(os.path.join(SPRITEDIR,"0.png")),
@@ -106,7 +94,7 @@ class Tile():
         if not self.dug:
             self.flagged = not self.flagged
             
-    def draw(self, surface: pygame.Surface, displayMines:bool = False, mark: bool = False) -> None:
+    def draw(self, surface: pygame.Surface, squareSize: int, displayMines:bool = False, mark: bool = False) -> None:
         if mark:
             sprite = SPRITES["mark"]
         elif self.flagged:
@@ -126,10 +114,13 @@ class Tile():
         else:
             sprite = SPRITES["missing"]
         
-        surface.blit(pygame.transform.scale(sprite, (SQUARESIZE, SQUARESIZE)), (self.x*SQUARESIZE, self.y*SQUARESIZE))
+        surface.blit(pygame.transform.scale(sprite, (squareSize, squareSize)), (self.x*squareSize, self.y*squareSize))
 
 
-def initialiseGrid(width:int, height:int, mines:int) -> list[list[Tile]]:
+def initialiseGrid(width: int, height: int, mines: int, maxWindowWidth:int = 1280, maxWindowHeight:int = 720, minSquareSize:int = 8, maxSquareSize:int = 64) -> tuple[list[list[Tile]],int]:
+
+    squareSize = min(max(min(maxWindowWidth//width, maxWindowHeight//width), minSquareSize), maxSquareSize)
+
     if mines > width*height:
         raise ValueError("More mines than tiles")
 
@@ -139,14 +130,28 @@ def initialiseGrid(width:int, height:int, mines:int) -> list[list[Tile]]:
 
     for _ in range(mines):
             tile = grid[random.randint(0,width-1)][random.randint(0,height-1)]
-            if tile.count == None:
-                tile.count = -1
+            while tile.count is not None:
+                tile = grid[random.randint(0,width-1)][random.randint(0,height-1)]
+            tile.count = -1
 
     for column in grid:
         for tile in column:
             tile.intialiseCount()
 
-    return grid
+    return grid, squareSize
+
+def getMineCount(grid: list[list[Tile]]) -> int:
+    mines: int = 0
+    flags: int = 0
+
+    for column in grid:
+        for tile in column:
+            if tile.count is not None:
+                mines += tile.count == -1
+            flags += tile.flagged
+
+    return mines-flags
+
 
 def hasWon(grid) -> bool:
     for column in grid:
@@ -155,20 +160,22 @@ def hasWon(grid) -> bool:
                 return False
     return True
 
-def init() -> tuple[list[list[Tile]],pygame.Surface,pygame.time.Clock]:
+def init(width:int, height:int, mines:int) -> tuple[list[list[Tile]],int,pygame.Surface,pygame.time.Clock]:
     pygame.init()
-    grid = initialiseGrid(width=BOARDWIDTH, height=BOARDHEIGHT, mines=MINES)
-    screen = pygame.display.set_mode((BOARDWIDTH*SQUARESIZE,BOARDHEIGHT*SQUARESIZE))
+    grid, squareSize = initialiseGrid(width=width, height=height, mines=mines)
+    screen = pygame.display.set_mode((width*squareSize,height*squareSize))
     clock = pygame.time.Clock()
-    return grid, screen, clock
+    return grid, squareSize, screen, clock
 
-def drawGrid(grid: list[list[Tile]], screen: pygame.Surface, displayMines:bool = False) -> None:
+def drawGrid(grid: list[list[Tile]], screen: pygame.Surface, squareSize: int, displayMines:bool = False) -> None:
     for column in grid:
         for tile in column:
-            tile.draw(screen, displayMines=displayMines)
+            tile.draw(surface=screen, squareSize=squareSize, displayMines=displayMines)
 
-if __name__ == "__main__":
-    grid, screen, clock = init()
+def main() -> None:
+    WIDTH, HEIGHT, MINES = 30, 16, 99
+
+    grid, squareSize, screen, clock = init(width=WIDTH,height=HEIGHT,mines=MINES)
 
     running = True
     finished = False
@@ -179,8 +186,8 @@ if __name__ == "__main__":
                 running = False
             elif event.type == pygame.MOUSEBUTTONUP:
                 mouseX,mouseY = pygame.mouse.get_pos()
-                x = mouseX//SQUARESIZE
-                y = mouseY//SQUARESIZE
+                x = mouseX//squareSize
+                y = mouseY//squareSize
                 if event.button == 1:
                     if grid[x][y].dig():
                         finished = True
@@ -191,12 +198,16 @@ if __name__ == "__main__":
             elif event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_SPACE:
                     finished = False
-                    grid = initialiseGrid(width=BOARDWIDTH, height=BOARDHEIGHT, mines=MINES)
+                    grid, squareSize = initialiseGrid(width=WIDTH, height=HEIGHT, mines=MINES)
                 
         screen.fill("light grey")
         
-        drawGrid(grid=grid, screen=screen, displayMines=finished)
+        drawGrid(grid=grid, screen=screen, squareSize=squareSize, displayMines=finished)
+        pygame.display.set_caption(f"Mines: {getMineCount(grid=grid)}")
         
         pygame.display.flip()
         
         clock.tick(60)
+
+if __name__ == "__main__":
+    main()
