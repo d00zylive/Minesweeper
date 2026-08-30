@@ -162,6 +162,11 @@ def init() -> tuple[list[list[Tile]],pygame.Surface,pygame.time.Clock]:
     clock = pygame.time.Clock()
     return grid, screen, clock
 
+def drawGrid(grid: list[list[Tile]], screen: pygame.Surface, displayMines:bool = False) -> None:
+    for column in grid:
+        for tile in column:
+            tile.draw(screen, displayMines=displayMines)
+
 if __name__ == "__main__":
     grid, screen, clock = init()
 
@@ -190,9 +195,7 @@ if __name__ == "__main__":
                 
         screen.fill("light grey")
         
-        for column in grid:
-            for tile in column:
-                tile.draw(screen, displayMines=finished)
+        drawGrid(grid=grid, screen=screen, displayMines=finished)
         
         pygame.display.flip()
         
