@@ -26,6 +26,17 @@ SPRITES = {
     }
 
 class Tile():
+    """A single minesweeper tile
+
+    Attributes:
+        x: The x position of the tile in the grid.
+        y: The y position of the tile in the grid.
+        grid: The grid which it is a part of.
+        count: The amount of adjacent mines or -1 if it is a mine.
+        flagged: Whether the tile has been flagged as a mine or not.
+        dug: Whether the tile has been dug/revealed or not.
+    """    
+
     x: int
     y: int
     grid: list[list[Self]]
@@ -45,6 +56,12 @@ class Tile():
         return f"Tile(x={self.x},y={self.y},count={self.count},flagged={self.flagged}, dug={self.dug})"
 
     def getAdjacentTiles(self) -> list[Self]:
+        """Gets the adjacent tiles
+
+        Returns:
+            list[Tile]: The list of the adjacent tiles.
+        """        
+
         adjacentTiles = []
         for vector in ADJACENCYVECTORS:
             x = self.x+vector[0]
@@ -55,6 +72,9 @@ class Tile():
         return adjacentTiles
             
     def intialiseCount(self) -> None:
+        """Checks adjacent tiles to set it's own count appropriatelty.
+        """        
+
         if self.count != -1:
             self.count = 0
             for tile in self.getAdjacentTiles():
@@ -62,6 +82,16 @@ class Tile():
                     self.count += 1
     
     def dig(self, queue:list[Self]|None = None, depth:int = 0) -> bool:
+        """Digs or chords this tile. If it reveals a 0 tile, it will flood dig.
+
+        Args:
+            queue (list[Self] | None, optional): *Should not be accessed.* The queue of of chains to start. Defaults to None.
+            depth (int, optional): *Should not be accessed.* The depth at which it is currently operating. Defaults to 0.
+
+        Returns:
+            bool: Whether this dig has revealed a mine or not.
+        """
+
         if queue is None: queue = []
 
         if not self.flagged:
@@ -91,10 +121,22 @@ class Tile():
         return False
     
     def flag(self) -> None:
+        """Flags this tile, if it has not been dug.
+        """
+
         if not self.dug:
             self.flagged = not self.flagged
             
     def draw(self, surface: pygame.Surface, squareSize: int, displayMines:bool = False, mark: bool = False) -> None:
+        """Draws this tile to the screen
+
+        Args:
+            surface (pygame.Surface): The screen to which the tile should be drawn.
+            squareSize (int): The size (in pixels) at which the tile should be drawn.
+            displayMines (bool, optional): Whether mines and incorrect flags should be displayed or not. Defaults to False.
+            mark (bool, optional): Whether this tile should be marked with an identifiable texture for debugging. Defaults to False.
+        """
+
         if mark:
             sprite = SPRITES["mark"]
         elif self.flagged:
@@ -118,11 +160,28 @@ class Tile():
 
 
 def initialiseGrid(width: int, height: int, mines: int, maxWindowWidth:int = 1280, maxWindowHeight:int = 720, minSquareSize:int = 8, maxSquareSize:int = 64) -> tuple[list[list[Tile]],int]:
+    """Initialises the grid and calculates the appropriate size for the tiles.
+
+    Args:
+        width (int): The width of the board in amount of tiles.
+        height (int): The height of the board in amount of tiles.
+        mines (int): The amount of mines that should be on the board.
+        maxWindowWidth (int, optional): The maximum width (in pixels) the window should be (minSquareSize takes priority). Defaults to 1280.
+        maxWindowHeight (int, optional): The maximum height (in pixels) the window should be (minSquareSize takes priority). Defaults to 720.
+        minSquareSize (int, optional): The minimum size (in pixels) the tiles are allowed to be. Defaults to 8.
+        maxSquareSize (int, optional): The maximum size (in pixels) the tiles are allowed to be. Defaults to 64.
+
+    Raises:
+        ValueError: More mines than tiles.
+
+    Returns:
+        tuple[list[list[Tile]],int]: _description_
+    """
 
     squareSize = min(max(min(maxWindowWidth//width, maxWindowHeight//width), minSquareSize), maxSquareSize)
 
     if mines > width*height:
-        raise ValueError("More mines than tiles")
+        raise ValueError("More mines than tiles.")
 
     grid: list[list[Tile]] = []
     for x in range(width):
@@ -141,6 +200,12 @@ def initialiseGrid(width: int, height: int, mines: int, maxWindowWidth:int = 128
     return grid, squareSize
 
 def getMineCount(grid: list[list[Tile]]) -> int:
+    """Returns the current (unflagged) minecount.
+
+    Args:
+        grid (list[list[Tile]]): The grid for which to get the minecount.
+    """
+
     mines: int = 0
     flags: int = 0
 
@@ -152,30 +217,69 @@ def getMineCount(grid: list[list[Tile]]) -> int:
 
     return mines-flags
 
+def hasWon(grid: list[list[Tile]]) -> bool:
+    """Returns whether the board has been cleared or not.
 
-def hasWon(grid) -> bool:
+    Args:
+        grid (list[list[Tile]]): The grid for which to check if it has been cleared.
+    """
+
     for column in grid:
         for tile in column:
             if not tile.dug and not tile.count == -1:
                 return False
     return True
 
-def init(width:int, height:int, mines:int) -> tuple[list[list[Tile]],int,pygame.Surface,pygame.time.Clock]:
+def init(width:int, height:int, mines:int, maxWindowWidth:int = 1280, maxWindowHeight:int = 720, minSquareSize:int = 8, maxSquareSize:int = 64) -> tuple[list[list[Tile]],int,pygame.Surface,pygame.time.Clock]:
+    """Initialises pygame and the grid.
+
+    Args:
+        width (int): The amount of tiles wide the board should be.
+        height (int): The amount of tiles high the board should be.
+        mines (int): The amount of mines the board should contain.
+        maxWindowWidth (int, optional): The maximum width (in pixels) the window should be (minSquareSize takes priority). Defaults to 1280.
+        maxWindowHeight (int, optional): The maximum height (in pixels) the window should be (minSquareSize takes priority). Defaults to 720.
+        minSquareSize (int, optional): The minimum size (in pixels) the tiles are allowed to be. Defaults to 8.
+        maxSquareSize (int, optional): The maximum size (in pixels) the tiles are allowed to be. Defaults to 64.
+
+    Returns:
+        (tuple[list[list[Tile]],int,pygame.Surface,pygame.time.Clock]): A tuple (grid, squareSize, screen, clock), where
+            grid is the initialised grid,
+            squareSize is the size (in pixels) at which to display the tiles,
+            screen is the Surface which represents the screen, and
+            clock is the pygame clock.
+    """
+
     pygame.init()
-    grid, squareSize = initialiseGrid(width=width, height=height, mines=mines)
+    grid, squareSize = initialiseGrid(width=width, height=height, mines=mines, maxWindowWidth=maxWindowWidth, maxWindowHeight=maxWindowHeight, minSquareSize=minSquareSize, maxSquareSize=maxSquareSize)
     screen = pygame.display.set_mode((width*squareSize,height*squareSize))
     clock = pygame.time.Clock()
     return grid, squareSize, screen, clock
 
-def drawGrid(grid: list[list[Tile]], screen: pygame.Surface, squareSize: int, displayMines:bool = False) -> None:
+def drawGrid(grid: list[list[Tile]], surface: pygame.Surface, squareSize: int, displayMines:bool = False) -> None:
+    """Draws all the tiles of a grid to a Surface
+
+    Args:
+        grid (list[list[Tile]]): The grid that should be drawn to the surface.
+        surface (pygame.Surface): The surface to which the grid should be drawn.
+        squareSize (int): The size (in pixels) at which the tiles should be drawn.
+        displayMines (bool, optional): Whether mines and incorrect flags should be displayed or not. Defaults to False.
+    """
+
     for column in grid:
         for tile in column:
-            tile.draw(surface=screen, squareSize=squareSize, displayMines=displayMines)
+            tile.draw(surface=surface, squareSize=squareSize, displayMines=displayMines)
 
-def main() -> None:
-    WIDTH, HEIGHT, MINES = 30, 16, 99
+def main(width:int = 30, height:int = 16, mines:int = 99) -> None:
+    """Runs the game for player interactivity.
 
-    grid, squareSize, screen, clock = init(width=WIDTH,height=HEIGHT,mines=MINES)
+    Args:
+        width (int): The amount of tiles wide the board should be. defaults to 30.
+        height (int): The amount of tiles high the board should be. defaults to 16.
+        mines (int): The amount of mines the board should contain. defaults to 99.
+    """
+
+    grid, squareSize, screen, clock = init(width=width,height=height,mines=mines)
 
     running = True
     finished = False
@@ -198,11 +302,11 @@ def main() -> None:
             elif event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_SPACE:
                     finished = False
-                    grid, squareSize = initialiseGrid(width=WIDTH, height=HEIGHT, mines=MINES)
+                    grid, squareSize = initialiseGrid(width=width, height=height, mines=mines)
                 
         screen.fill("light grey")
         
-        drawGrid(grid=grid, screen=screen, squareSize=squareSize, displayMines=finished)
+        drawGrid(grid=grid, surface=screen, squareSize=squareSize, displayMines=finished)
         pygame.display.set_caption(f"Mines: {getMineCount(grid=grid)}")
         
         pygame.display.flip()
